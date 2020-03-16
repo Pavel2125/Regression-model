@@ -1,0 +1,91 @@
+---
+title: "Comparison of cars with automatic and manual gearboxes"
+author: "Pavel Naumov"
+date: "05/12/2019"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: 
+    fig_crop: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## First glance at the Motor Trend dataset 
+
+First of all we are going to make first glance at our data set.
+This is the "Motor Trend Car Road Tests" dataset.The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models).
+
+```{r cars}
+car<-datasets::mtcars
+head(car, 10)
+```
+
+
+## Multivarible regression 
+As the first step we try to include all variables to our model and estimate their roles:
+
+```{r Multivariable, echo=TRUE} 
+summary(lm(mpg ~ ., data = car))$coefficients
+```
+As we can see a lot of variables have parameter P>0.05.
+As the next step we try to exclude bad variables step by step (see appendix).
+
+As a results of backward-elimination process we have a table with only 3 columns:  
+wt - Weight (1000 lbs);
+qsec - 1/4 mile time;
+am - Transmission (0 = automatic, 1 = manual).
+
+```{r new table, echo=TRUE}
+car2<-subset(car, select = c(mpg, wt, qsec,am))
+summary(lm(mpg ~ .-1, data = car2))$coefficients
+```
+
+
+## Conclusion   
+Base on the final model we can estimate the influence of mechanic gearbox to miles per gallon with 95% confidence.
+```{r  conclusion, echo=TRUE}
+fit<-summary(lm(mpg ~ . -1, data = car2))$coefficients
+
+mechanic_gearbox<- fit[3,1]+c(-1, 1) * qt(0.975, df = (lm(mpg ~ . -1, data = car2))$df) * fit[3, 2]
+print(mechanic_gearbox)
+
+par(mfrow = c(2,2))
+plot(lm(mpg ~ . -1, data = car2))
+
+```
+
+Mechanic gearbox increase mpg from 2.2 up to 6.4 miles per gallon with 95% confidence.
+
+\newpage
+
+## Appendix
+
+And we can automate this backward-elimination process:
+```{r Backward-elimination, echo=TRUE}
+car2<-car
+variable_name <- names(sort(summary(lm(mpg ~ ., data = car2))$coefficients[,"Pr(>|t|)"], decreasing = TRUE)[1])
+variable_P<-sort(summary(lm(mpg ~ ., data = car2))$coefficients[,"Pr(>|t|)"], decreasing = TRUE)[1]
+print(variable_P)
+
+
+while (variable_P>0.05 && variable_name!="(Intercept)") {
+car2<-car2[, -which(names(car2)==variable_name)]
+print(variable_P)
+variable_name<-names(sort(summary(lm(mpg ~ ., data = car2))$coefficients[,"Pr(>|t|)"], decreasing = TRUE)[1])
+
+variable_P<-sort(summary(lm(mpg ~ ., data = car2))$coefficients[,"Pr(>|t|)"], decreasing = TRUE)[1]
+}
+
+```
+
+Finally in our table we have only 3 columns 
+wt - Weight (1000 lbs) 
+qsec - 1/4 mile time
+am - Transmission (0 = automatic, 1 = manual)
+
+```{r  after Backward-elimination, echo=TRUE}
+summary(lm(mpg ~ . -1, data = car2))$coefficients
+```
